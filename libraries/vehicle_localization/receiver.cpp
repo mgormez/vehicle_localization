@@ -15,43 +15,41 @@ Receiver::Receiver()
 void Receiver::receiver_init()
 {
 	idle();
-	// set default values
-	channel_init();
 	this -> frame_timeout_delay = 0;
-	//write default values to sensor
+	// set default values for channel parameters
+	// set_default_ranging_parameters();
+	// receiver_update_values();
+	// delay(10);
+
+	// set desired values for channel parameters
+	set_ranging_parameters();
+	receiver_update_values();
+	
+	//write values to sensor depending on selected parameters
+
+	// in case of 110 KBPS data rate switch on this bit
+	uint8_t sys_cfg[SYS_CFG_LEN] = {0};
+	read_spi(SYS_CFG,NO_SUB,sys_cfg,SYS_CFG_LEN);	//to not over write!
+	if (this -> bit_rate == _110KBPS)
+	{
+		set_bit(sys_cfg,4,22,1);//RXM110K
+	}	
+	write_spi(SYS_CFG,NO_SUB,sys_cfg,SYS_CFG_LEN);
+
+	char msg[128];
+	Serial.println("receiver state: ");
+	sprintf(msg,"channel %u, prf %u, bit rate %u, preamble_code %u, preamble_size %u",channel_nb,prf,bit_rate,preamble_code,preamble_size);
+	Serial.println(msg);
+}
+
+void Receiver::receiver_update_values()
+{
 	receiver_update_channel();
 	receiver_update_bitrate();
 	receiver_update_prf();
 	receiver_update_preamble_code();
 	receiver_update_preamble_size();
 	receiver_update_frame_timeout_delay();
-
-	// delay(5);
-	// this -> bit_rate = _110KBPS;
-	// this -> preamble_code = channel_valid_preamble_code(4U);
-	// this -> preamble_size = channel_valid_preamble_size(_2048);
-	// receiver_update_channel();
-	// receiver_update_bitrate();
-	// receiver_update_prf();
-	// receiver_update_preamble_code();
-	// receiver_update_preamble_size();
-	// receiver_update_frame_timeout_delay();
-	// // //auto receive (permanently in receive mode)
-	// // //p72/244
-	// uint8_t sys_cfg[SYS_CFG_LEN] = {0};
-	// read_spi(SYS_CFG,NO_SUB,sys_cfg,SYS_CFG_LEN);//to not over write!
-	// // set_bit(sys_cfg,SYS_CFG_LEN,29,1);//RXAUTR, receiver auto-re-enable
-	// if (this -> bit_rate == _110KBPS)
-	// {
-	// 	set_bit(sys_cfg,4,22,1);//RXM110K
-	// 	// write_spi(SYS_CFG, 0x03, sys_cfg, 1);
-	// }	
-	// write_spi(SYS_CFG,NO_SUB,sys_cfg,SYS_CFG_LEN);
-
-	char msg[128];
-	Serial.println("receiver state: ");
-	sprintf(msg,"channel %u, prf %u, bit rate %u, preamble_code %u, preamble_size %u",channel_nb,prf,bit_rate,preamble_code,preamble_size);
-	Serial.println(msg);
 }
 
 void Receiver::rx_start()
@@ -62,17 +60,6 @@ void Receiver::rx_start()
 	sys_ctrl[0] = 0x01;
 	write_spi(SYS_CTRL, 0x01, sys_ctrl, 1);
 	// Serial.println("rx start");
-}
-
-void Receiver::rx_reset()
-{
-	// receiver only reset p195/244
-	Serial.println("I think -> unused function");
-	uint8_t pmscCtrl0[] = {0xE0};	// clear bit 28
-	write_spi(PMSC, 0x03, pmscCtrl0, 1);
-
-	pmscCtrl0[0] = 0x10;	//set bit 28
-	write_spi(PMSC, 0x03, pmscCtrl0, 1);
 }
 
 void Receiver::clear_rx_interrupts()
@@ -112,16 +99,16 @@ void Receiver::rx_receive_data()
 	uint8_t rx_data[2] = {0};
 
 	read_spi(RX_BUFFER, NO_SUB, rx_data, flen);
-	Serial.println("======= DATA READ::");
-	Serial.println("read data from data buffer: ");	// hardcoded length. Should loop on the message length (that comes as an input)
-	Serial.println(rx_data[0]);
+	// Serial.println("======= DATA READ::");
+	// Serial.println("read data from data buffer: ");	// hardcoded length. Should loop on the message length (that comes as an input)
+	// Serial.println(rx_data[0]);
 }
 void Receiver::rx_receive_data(uint8_t* rx_buffer)
 {
-	// Get frame length
+	// Get frame length from Frame info register 
 	uint8_t flen;	// can we have more than 256 bytes of data?
 	read_spi(RX_FINFO, NO_SUB, &flen, RX_FLEN_LEN);
-	flen = flen & 0x7F;	//frame length is 7 LSB
+	flen = flen & 0x7F;	//frame length is 7 LSB of the read byte
 	// Serial.print("length of received frame (BEFORE FCS clean up): ");
 	// Serial.println(flen[0]);
 	flen -= 2; // remove the 2 Frame check bytes (FCS)
@@ -129,43 +116,43 @@ void Receiver::rx_receive_data(uint8_t* rx_buffer)
 	// Serial.println(flen[0]);
 
 	read_spi(RX_BUFFER, NO_SUB, rx_buffer, flen);
-	Serial.println("======= DATA READ::");
-	Serial.println("read data from data buffer: ");	// hardcoded length. Should loop on the message length (that comes as an input)
-	Serial.println(rx_buffer[0]);
+	// Serial.println("======= DATA READ::");
+	// Serial.println(rx_buffer[0]);
 }
 
 void Receiver::receiver_update_SFD_timeout() 
 {
-	uint16_t preambleSize = 4096;
+	uint16_t preamble_size = 4096;
 	uint8_t timeout[2] = {0};
 	switch(this -> preamble_size) 
 	{
 		case _64:
-			preambleSize = 64;
+			preamble_size = 64;
 			break;
 		case _128:
-			preambleSize = 128;
+			preamble_size = 128;
 			break;
 		case _256:
-			preambleSize = 256;
+			preamble_size = 256;
 			break;
 		case _512:
-			preambleSize = 512;
+			preamble_size = 512;
 			break;
 		case _1024:
-			preambleSize = 1024;
+			preamble_size = 1024;
 			break;
 		case _1536:
-			preambleSize = 1536;
+			preamble_size = 1536;
 			break;
 		case _2048:
-			preambleSize = 2048;
+			preamble_size = 2048;
 			break;
 		case _4096:
-			preambleSize = 4096;
+			preamble_size = 4096;
 			break;
 	}
-	short2Bytes(preambleSize + this -> sfd + 1 - this -> pac, timeout);
+	// maybe can increase this value, this is the minimal (should be enough)
+	short2Bytes(preamble_size + this -> sfd + 1 - this -> pac, timeout);
     write_spi(DRX_CONF, 0x20, timeout, 2);
 }
 
@@ -298,22 +285,47 @@ void Receiver::receiver_update_preamble_code()
 
 void Receiver::receiver_update_preamble_size()
 {
-	uint8_t drxTune1b[2] = {0};
+	// uint8_t drx_tune1b[2] = {0};
+	// switch (this -> preamble_size) 
+	// {
+	// case _64:
+	// 	short2Bytes(0x0064, drx_tune1b);
+	// 	break;
+	// case _128: case _256: case _512: case _1024:
+	// 	short2Bytes(0x0020, drx_tune1b);
+	// 	break;
+	// case _1536: case _2048: case _4096:
+	// 	short2Bytes(0x0010, drx_tune1b);
+	// 	break;
+	// }
+	// write_spi(DRX_CONF, 0x06, drx_tune1b, 2);
+	// this -> receiver_update_pac_size();
+	// this -> receiver_update_SFD_timeout();
+
+	// updated from page145/244 
+	// & added from page 148/244, for DRX_TUNE4H
+
+	uint8_t drx_tune1b[2] = {0};
+	uint8_t drx_tune4h[2] = {0};
 	switch (this -> preamble_size) 
 	{
 	case _64:
-		short2Bytes(0x0064, drxTune1b);
+		short2Bytes(0x0010, drx_tune1b);	// for 6800 kbps
+		short2Bytes(0x0010, drx_tune4h);
 		break;
-	case _128: case _256: case _512: case _1024:
-		short2Bytes(0x0020, drxTune1b);
+	case _128: case _256: case _512: case _1024:	// for 850 kbps & 6800 kbps
+		short2Bytes(0x0020, drx_tune1b);
+		short2Bytes(0x0028, drx_tune4h);
 		break;
-	case _1536: case _2048: case _4096:
-		short2Bytes(0x0010, drxTune1b);
+	case _1536: case _2048: case _4096:			// for 110 kbps
+		short2Bytes(0x0064, drx_tune1b);
+		short2Bytes(0x0028, drx_tune4h);
 		break;
 	}
-	write_spi(DRX_CONF, 0x06, drxTune1b, 2);
-	this -> receiver_update_pac_size();
-	this -> receiver_update_SFD_timeout();
+	write_spi(DRX_CONF, 0x06, drx_tune1b, 2);
+	write_spi(DRX_CONF, 0x26, drx_tune4h, 2);
+	receiver_update_pac_size();
+	receiver_update_SFD_timeout();
 }
 
 void Receiver::receiver_update_frame_timeout_delay()

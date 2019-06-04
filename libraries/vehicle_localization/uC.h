@@ -10,28 +10,28 @@
 #include "transmitter.h"
 #include "constants.h"
 
-// typedef enum{IDLE_STATE = 0x00U, RX_STATE = 0x01U, TX_STATE = 0x10U}STATE; // legacy (not suited for ranging)
 
 typedef enum
 {
-	COMPUTING_STATE 		= 0x00U,	// used at the end of the ranging, while we compute the distance
+	COMPUTING_STATE 		= 0x00U,
 
 	TAG_SEND_INIT 			= 0x01U,
-	TAG_WAIT_MESSAGE_1 		= 0x04U,
-	TAG_SEND_MESSAGE_2 		= 0x05U,
-	TAG_WAIT_TIMES			= 0x08U,
+	TAG_WAIT_MESSAGE_1 		= 0x02U,
+	TAG_SEND_MESSAGE_2 		= 0x03U,
+	TAG_WAIT_TIMES			= 0x04U,
 
-	ANCHOR_WAIT_INIT 		= 0x02U,
-	ANCHOR_SEND_MESSAGE_1 	= 0x03U,
-	ANCHOR_WAIT_MESSAGE_2	= 0x06U,
-	ANCHOR_SEND_TIMES		= 0x07U
+	ANCHOR_WAIT_INIT 		= 0x05U,
+	ANCHOR_SEND_MESSAGE_1 	= 0x06U,
+	ANCHOR_WAIT_MESSAGE_2	= 0x07U,
+	ANCHOR_SEND_TIMES		= 0x08U
 }STATE;
 
 typedef enum
 {
 	MESSAGE_INIT 	= 0x00U,
 	MESSAGE_1 		= 0x01U,
-	MESSAGE_2 		= 0x02U
+	MESSAGE_2 		= 0x02U,
+	TIME_MESSAGE 	= 0x03U
 }MESSAGE;
 
 class uC
@@ -42,11 +42,22 @@ private:
 	Sensor* dwm_1000;	
 	Receiver* receiver;	
 	Transmitter* transmitter;
-	uint8_t anchor_number;	// used by anchor nodes
+
+	uint8_t anchor_number;					// used by anchor nodes
 	uint8_t current_ranging_anchor_number;	// used by tag
-	uint64_t TOF_val;
-	double TOF;
-	double distance;
+
+	static uint8_t msg [128];	// length encoded on 7 bits
+	static uint8_t msg_length;
+	static volatile bool tx_done;
+	static volatile bool rx_done;
+	static uint8_t isr_status_register[SYS_STATUS_LEN];
+	static const uint8_t rx_error_status[SYS_STATUS_LEN];	// RX error
+
+	uint8_t received_message_buffer[MESSAGE_SIZE+TIME_MESSAGE_SIZE];
+
+	double distances[NB_OF_ANCHORS+1];	// anchor numbers: 1,2,3 (not 0)
+    double anchor_positions[3][2];
+	
 	uint8_t tag_tx_init_time_stamp[TIME_STAMP_LEN];
 	uint8_t tag_rx_message1_time_stamp[TIME_STAMP_LEN];
 	uint8_t tag_tx_message2_time_stamp[TIME_STAMP_LEN];
@@ -65,16 +76,23 @@ private:
 	uint64_t t_reply_tag;
 	uint64_t t_round_anchor;
 	uint64_t t_reply_anchor;
+	uint64_t TOF_val;
+	double TOF;	
+	double tag_position[2];
 
-	static uint8_t msg [128];	// length encoded on 7 bits
-	static uint8_t msg_length;
-	static volatile bool tx_done;
-	static volatile bool rx_done;
-	static uint8_t isr_status_register[SYS_STATUS_LEN];
-	static uint16_t isr_read_counter;
+	uint64_t ranging_init_time;
+	uint64_t init_system_time;
+	uint64_t final_system_time;
+	uint64_t system_duration;
 
-	uint8_t time1[TIME_STAMP_LEN] = {0};
-	uint8_t time2[TIME_STAMP_LEN] = {0};
+	uint64_t t_ranging_start;
+	uint64_t t_ranging_end;
+
+	uint64_t t_distance_start;
+	uint64_t t_distance_end;
+
+	uint64_t t_position_start;
+	uint64_t t_position_end;
 
 public:
 	/*
@@ -92,17 +110,27 @@ public:
 	 * 4. once tag receives SEND_MESSAGE_1, it goes to SEND_MESSAGE_2. The tag then waits for the anchor's times in WAIT_ANCHOR_TIMES
 	 * 5. once the anchor receives SEND_MESSAGE_2, the ranging is done. The anchor then sends it times in SEND_ANCHOR_TIMES
 	*/
-	void use_sensor();
+	void ranging_loop();
 	/*
 	 * Computes the distance (on the tag side) based on the time stamps collected by the tag
 	 * and those sent by the anchors
 	*/
 	void compute_distance();
 	/*
+	 * From the previously computed distances we extract an absolute position of the tag
+	*/
+	void compute_position();
+
+	/*
 	 * Determines based on the received message if the anchor receiving this message is the 
 	 * recipient of this message or if it is addressed to another anchor.
 	*/
 	bool is_recipient();
+	/*
+	 * Determines, on the tag side, if the reply from the anchor is correct
+	 * before continuing the ranging (or restarting if it's not)
+	*/
+	bool good_response();	
 	/*
 	 * contains all the steps to follow for making a transmission. This function is called by the esp
 	 * if the sensor is in TX mode. It is called once at configuration and each time there is an 
@@ -140,18 +168,29 @@ public:
 
 	void config_sensor();
 	/*
-	 * set message according to the state of the system
+	 * Set message according to the state of the system and the destination.
+	 * structure of message:
+	 * byte 0: - high nible: recipient number (0 for tag)
+	 *		   - low nible : message (representing the state)
+	 * 
 	*/
 	void set_message();
+	/*
+	 * Read the impulse response from register ACC_MEM
+ 	*/
+	void get_impulse_response();
 
+	void correct_anchor_delay();
+	/*
+	 * receiver only reset (p195/244, last line of SOFTRESET section)
+	*/
+	void rx_reset();
 	/*
 	 * This function is used for debugging purposes only. 
 	 * Refair to the user manual for SYS_STATUS and SYS_MASK, and to APS022 for SYS_STATE
 	 * print the state of the system (SYS_STATE,SYS_STATUS and SYS_MASK registers)
 	*/
 	static void system_state();
-
-	void print_time_stamps();
 	/*
 	 * read the device id (register 0x00 of the decawave) to check if the SPI
 	 * communication SEEMS to be working (although a correct DEV ID read is not a guarantee of correct working).
@@ -163,6 +202,8 @@ public:
 	 * for now, hard code number of anchor like this
 	*/
 	void set_number(uint8_t number);
+	uint8_t get_anchor_number();
+
 	/*
 	 * Interrupt Service Routine (ISR). Must be static, or not an instance of the class
 	 * It cannot have inputs nor outputs
@@ -170,6 +211,8 @@ public:
 	static void dwm_isr();
 	static bool is_rx_done();
 	static bool is_tx_done();
+	static bool rx_error();
+
 	/*
 	 * clear the status register variable and the SYS_STATUS to 0xFF
 	*/

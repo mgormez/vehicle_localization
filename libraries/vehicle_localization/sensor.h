@@ -62,11 +62,17 @@ public:
 	 * constructor
 	*/
 	Sensor();
+
+	void wait_4_response();
 	/*
-	 * Set default values for channel parameters 
+	 * Default values for channel parameters 
 	 * (channel #5, prf 16 MHz, bit rate 6800 kBps, preamble code 4, preamble size 128)
 	*/
-	void channel_init();
+	void set_default_ranging_parameters();
+	/*
+	 * Set parameters of the communication (channel, prf, bit rate, preamble)
+	*/
+	void set_ranging_parameters();
 	/*
 	 * 
 	*/

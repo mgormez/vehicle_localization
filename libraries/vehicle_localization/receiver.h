@@ -18,26 +18,19 @@ private:
 public:
 	Receiver();
 
+	/*
+	 * set default values of the channel. Need to be corrected taking into account 2.5.5 page 22/244
+	*/
+	void receiver_init();
+	void receiver_update_values();
+
 	void clear_rx_interrupts();
 	void auto_receive();
 
 	void rx_start();
 
-	/*
-	 * receiver only reset (p195/244, last line of SOFTRESET section)
-	*/
-	void rx_reset();
-
-	/*
-	 * set default values of the channel. Need to be corrected taking into account 2.5.5 page 22/244
-	*/
-	void receiver_init();
 	void rx_receive_data();
 	void rx_receive_data(uint8_t * rx_buffer);
-
-	uint8_t channel_valid_preamble_code(uint8_t preamble_code);
-	PE channel_valid_preamble_size( PE preamble_size);
-
 
 	void receiver_update_channel();
 	void receiver_update_bitrate();

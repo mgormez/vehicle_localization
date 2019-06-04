@@ -94,12 +94,14 @@
 #define JUNK 		0x00U	//for reading from SPI
 
 /* ------------------------------------- */
-/* CONSTANTS 		                     */
+/* LOCALIZATION PARAMETERS               */
 /* ------------------------------------- */
 // #define ANTENNA_DELAY 		65610U //Offset for error at -50cm  //0x8066 // precis 10cm
-#define ANTENNA_DELAY	65670U
+// #define ANTENNA_DELAY		65670U
+// #define ANTENNA_DELAY 		65772U // 2m calibration (aggregate tag+anchor value)
+#define ANTENNA_DELAY 		65767U // 5m calibration (aggregate tag+anchor value)
 
-//index of datas in a message
+//index of the byte containing given data in a message exchange
 #define ANCHOR_NB_INDEX				0U
 #define STATE_MACHINE_STATE_INDEX	1U
 #define TIME_STAMP_INDEX			2U
@@ -107,13 +109,37 @@
 #define MESSAGE_SIZE	1	// size of messages exchanged during the ranging
 							// This message simply need to carry information about 
 							// which step of the ranging is currently being undertaken
-							// it doesn't carry any actual data (like a time stamp)
 #define TIME_MESSAGE_SIZE	15	// Size of the message containing the times measured by the anchor
-#define NB_OF_ANCHORS	2	// for now hard code the number of anchors
+// #define NB_OF_ANCHORS	3	// hard code the number of anchors
+#define NB_OF_ANCHORS	1	// for calibration
 
-/* ------------------------------------- */
-/* RANGING PAARMETERS                    */
-/* ------------------------------------- */
+// // fixed anchors positions (m)
+// #define ANCHOR_1_POS_X	0.0
+// #define ANCHOR_1_POS_Y	0.0
+
+// #define ANCHOR_2_POS_X	7.5
+// #define ANCHOR_2_POS_Y	0.0
+
+// #define ANCHOR_3_POS_X	1.80
+// #define ANCHOR_3_POS_Y	49.28
+
+// fixed anchors positions (m)
+#define ANCHOR_1_POS_X	0.0
+#define ANCHOR_1_POS_Y	0.0
+
+#define ANCHOR_2_POS_X	7.33
+#define ANCHOR_2_POS_Y	0.0
+
+#define ANCHOR_3_POS_X	-1.5
+#define ANCHOR_3_POS_Y	34.2
+
+// for testing localization algorithm (legacy)
+#define TAG_X			-0.05
+#define TAG_Y			2.85			
+
 #define REGISTER_VALUE_TO_S (1/(128*499.2*1000000)) //15.65 ps = 1.565*10^-11
 #define SPEED_OF_LIGHT 299792458L	//m/s
+#define TIMEOUT 500U
+
+
 #endif

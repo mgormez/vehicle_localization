@@ -28,9 +28,9 @@ void Sensor::dwm_init()
 	// pmsc_ctrl0[0] |= 0x01;
 	// slow_write_spi(PMSC, PMSC_SYSCLKS_SUB, pmsc_ctrl0, 2);
 	
-	delay(10);
+	// delay(10);
 	load_LDE();
-	delay(10);
+	delay(5);
 
 	//change clock back to AUTO clock
 	// slow_read_spi(PMSC, PMSC_SYSCLKS_SUB, pmsc_ctrl0, 2);
@@ -39,15 +39,77 @@ void Sensor::dwm_init()
 	// slow_write_spi(PMSC, PMSC_SYSCLKS_SUB, pmsc_ctrl0, 2);
 
 }
-
-void Sensor::channel_init()
+void Sensor::wait_4_response()
 {
-	//set default values
+	uint8_t sys_ctrl[SYS_CTRL_LEN];
+	slow_read_spi(SYS_CTRL,NO_SUB,sys_ctrl,SYS_CTRL_LEN);
+	set_bit(sys_ctrl,SYS_CTRL_LEN,WAIT4RESP_BIT,1);
+	slow_write_spi(SYS_CTRL,NO_SUB,sys_ctrl,SYS_CTRL_LEN);
+}
+
+void Sensor::set_default_ranging_parameters()
+{
+	// 0) default values
 	channel_nb = _5;
 	prf = _16MHZ;
 	bit_rate = _6800KBPS;
 	preamble_code = channel_valid_preamble_code(4U);
 	preamble_size = channel_valid_preamble_size(_128);
+}
+
+void Sensor::set_ranging_parameters()
+{
+	set_default_ranging_parameters();
+	// std @ 110kbps
+	// all parking done with this one std @110kbps
+	// channel_nb = _5;
+	// prf = _16MHZ;
+	// bit_rate = _110KBPS;
+	// preamble_code = channel_valid_preamble_code(4U);
+	// preamble_size = channel_valid_preamble_size(_2048);
+
+	// 	// std @ 110kbps & 64 MHz
+	// channel_nb = _5;
+	// prf = _64MHZ;
+	// bit_rate = _110KBPS;
+	// preamble_code = channel_valid_preamble_code(9U);
+	// preamble_size = channel_valid_preamble_size(_2048);
+
+	// // 1) bit rate to 110 kbps, channel 1, prf 64 MHz, code 1, length 4096
+	// channel_nb = _1; 
+	// prf = _16MHZ;
+	// bit_rate = _110KBPS;
+	// preamble_code = channel_valid_preamble_code(1U);
+	// preamble_size = channel_valid_preamble_size(_2048);
+
+	// channel 2
+	// channel_nb = _2; 
+	// prf = _16MHZ;
+	// bit_rate = _6800KBPS;
+	// preamble_code = channel_valid_preamble_code(3U);
+	// preamble_size = channel_valid_preamble_size(_128);
+
+	// //channel 3
+	// channel_nb = _3; 
+	// prf = _16MHZ;
+	// bit_rate = _110KBPS;
+	// preamble_code = channel_valid_preamble_code(5U);
+	// preamble_size = channel_valid_preamble_size(_2048);
+
+	// delay(5);
+	// // 2)
+	// channel_nb = _7; 
+	// prf = _16MHZ;
+	// bit_rate = _110KBPS;
+	// preamble_code = channel_valid_preamble_code(7U);	// or 2
+	// preamble_size = channel_valid_preamble_size(_2048);
+
+	// channel_nb = _7; 
+	// prf = _64MHZ;
+	// bit_rate = _6800KBPS;
+	// preamble_code = channel_valid_preamble_code(18U);	// or 2
+	// preamble_size = channel_valid_preamble_size(_128);
+
 }
 
 void Sensor::idle()
@@ -119,16 +181,20 @@ void Sensor::load_LDE()
 
 void Sensor::set_anchor_antenna_delay()
 {
-	uint8_t delayuint8[2];
-    uint16_t antennaDelay = ANTENNA_DELAY >> 1;
-    delayuint8[1] = (antennaDelay & 0xFF00) >>8;
-    delayuint8[0] = (antennaDelay & 0xFF);
-    write_spi(TX_ANTD, NO_SUB, delayuint8, 2);
-    write_spi(LDE_CTRL, 0x1804, delayuint8, 2);
+	// uint8_t receiver_delay[2];
+    // uint16_t antenna_delay = ANTENNA_DELAY >> 1;
+    // receiver_delay[1] = (antenna_delay & 0xFF00) >>8;
+    // receiver_delay[0] = (antenna_delay & 0xFF);
+    // write_spi(TX_ANTD, NO_SUB, receiver_delay, 2);
+    // write_spi(LDE_CTRL, 0x1804, receiver_delay, 2);
+    // uint8_t antenna_delay[2] = {0x08,0x00};
+    // write_spi(TX_ANTD, NO_SUB, antenna_delay, 2);
+    // write_spi(LDE_CTRL, 0x1804, receiver_delay, 2);
 }
 
 void Sensor::spi_init()
 {
+	// legacy function
 	Serial.println("spi init");
 	uint8_t sys_cfg[4] = {0}; //page 70
 	Sensor::slow_read_spi(SYS_CFG,NO_SUB,sys_cfg,4);
@@ -179,9 +245,8 @@ void Sensor::correct_default_configuration()
     //Sensor::load_LDE()
 
 	//LDO_TUNE
-    // DO LDO_TUNE ! (none of the guys did it though)
-    Serial.println("To Do: LDO_TUNE");
-    Serial.println("Also: maybe throw away the first frame as there is always a locking problem? Make a dummy frame with value 0xFF that tags know to discard");
+    Serial.println("To Do: LDO_TUNE?");
+    // Serial.println("Also: maybe throw away the first frame as there is always a locking problem? Make a dummy frame with value 0xFF that tags know to discard");
     // Serial.println("To Do: also other config things :( ");
 }
 
@@ -293,8 +358,7 @@ PE Sensor::channel_valid_preamble_size(PE preamble_size)
  * ############################   SPI FUNCTIONS   ##############################
  * #############################################################################
 */
-// no interrupt in the SPI function
-// attach & detach interrupt before doing the SPI transaction
+// no interrupt in the SPI function (from esp library which is the one that is used!)
 void Sensor::read_spi(uint8_t address, uint16_t offset, uint8_t* spi_buffer, uint16_t len)
 {
 	uint8_t header[3] = {0};

@@ -20,14 +20,19 @@ public:
 	 * set default values of the channel. Need to be corrected taking into account 2.5.5 page 22/244
 	*/
 	void transmitter_init();
+	void transmitter_update_values();
+
 	/*
 	 * clear system event status register of any TX flags that may have been raised
 	*/
 	// void clear_tx_interrupts(); // static to be able to call during static interrupt
 	void tx_start();
 	void tx_buffer_fill_data(uint8_t* data, uint8_t data_size);
-	uint8_t channel_valid_preamble_code(uint8_t preamble_code);
-	PE channel_valid_preamble_size( PE preamble_size);
+
+	// DO NOT do this! Function is declared in the super class this is 
+	// unintended polymorphism, function not redefined in subclass -> problem!
+	// uint8_t channel_valid_preamble_code(uint8_t preamble_code);
+	// PE channel_valid_preamble_size( PE preamble_size);
 
 	/*
 	 * send default values sent to the dw

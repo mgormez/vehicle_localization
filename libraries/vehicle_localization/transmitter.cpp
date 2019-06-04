@@ -14,28 +14,29 @@ Transmitter::Transmitter()
 
 void Transmitter::transmitter_init()
 {
-	// set default values for channel parameters 
-	channel_init();
-	//write default values to sensor
+	idle();
+	// set default values for channel parameters
+	// set_default_ranging_parameters();
+	// transmitter_update_values();
+	// delay(10);
+
+	// set desired values for channel parameters
+	set_ranging_parameters();
+	transmitter_update_values();
+	
+	char transmitter_init_config[128] = {0};
+	Serial.println("transmitter state: ");
+	sprintf(transmitter_init_config,"channel %u, prf %u, bit rate %u, preamble_code %u, preamble_size %u",channel_nb,prf,bit_rate,preamble_code,preamble_size);
+	Serial.println(transmitter_init_config);
+}
+
+void Transmitter::transmitter_update_values()
+{
 	transmitter_update_channel();
 	transmitter_update_bitrate();
 	transmitter_update_prf();
 	transmitter_update_preamble_code();
 	transmitter_update_preamble_size();
-
-	// this -> bit_rate = _110KBPS;
-	// this -> preamble_code = channel_valid_preamble_code(4U);
-	// this -> preamble_size = channel_valid_preamble_size(_2048);
-	// transmitter_update_channel();
-	// transmitter_update_bitrate();
-	// transmitter_update_prf();
-	// transmitter_update_preamble_code();
-	// transmitter_update_preamble_size();
-
-	char transmitter_init_config[128] = {0};
-	Serial.println("transmitter state: ");
-	sprintf(transmitter_init_config,"channel %u, prf %u, bit rate %u, preamble_code %u, preamble_size %u",channel_nb,prf,bit_rate,preamble_code,preamble_size);
-	Serial.println(transmitter_init_config);
 }
 
 void Transmitter::tx_start()
@@ -43,8 +44,10 @@ void Transmitter::tx_start()
 	// p79/244. Call once all the configuration has been done and the data putt in TX_BUFFER.
 	// This is the last step before the message is sent
 	// device should be in IDLE mode before this
-	uint8_t tx_start[1] = {0};	
-	set_bit(tx_start,1,TXSTRT_BIT,1);//bit TXSTRT.
+	uint8_t tx_start[1] = {0};	//FIXME change name 
+	
+	set_bit(tx_start,1,TXSTRT_BIT,1);		// start transmission bit
+	set_bit(tx_start,1,WAIT4RESP_BIT,1);	// wait for response bit
 	// Serial.print("tx_start:: ");
 	// Serial.println(tx_start[0],BIN);
 	// we can check WAIT4RESP here !! 
@@ -113,7 +116,7 @@ void Transmitter::transmitter_update_tx_power()
 			break;
 		}
 		break;
-	default:
+	default:	// not 6800 kbps
 		switch (this ->prf) {
 		case _16MHZ:
 			switch (this ->channel_nb) {
