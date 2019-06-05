@@ -25,6 +25,9 @@ public:
 	void receiver_update_values();
 
 	void clear_rx_interrupts();
+	/*
+	 * the dwm1000 goes to receive mode after finishing a transmission
+	*/
 	void auto_receive();
 
 	void rx_start();

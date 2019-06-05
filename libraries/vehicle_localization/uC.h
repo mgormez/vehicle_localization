@@ -165,7 +165,9 @@ public:
 	 * channel number, data rate, pac size etc.
 	*/
 	void config_sensor_to_sensor_communication();
-
+	/*
+	 * calls the 2 previous functions
+	*/
 	void config_sensor();
 	/*
 	 * Set message according to the state of the system and the destination.
@@ -179,7 +181,10 @@ public:
 	 * Read the impulse response from register ACC_MEM
  	*/
 	void get_impulse_response();
-
+	/*
+	 * correct antenna delay due to overhead processing of frame. The value used
+	 * (antenna delay takes into account delays of anchor & tag)
+	*/
 	void correct_anchor_delay();
 	/*
 	 * receiver only reset (p195/244, last line of SOFTRESET section)

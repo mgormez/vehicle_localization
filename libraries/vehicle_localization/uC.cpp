@@ -13,7 +13,6 @@
 #include "uC.h"
 
 // static members definitions (declaration done in header file)
-static int irq_counter = 0;	//for debug purposes
 volatile bool uC::tx_done = false;	
 volatile bool uC::rx_done = false;
 
@@ -21,16 +20,17 @@ uint8_t uC::isr_status_register[SYS_STATUS_LEN] = {0};
 uint8_t uC::msg[128] = {0};
 uint8_t uC::msg_length = MESSAGE_SIZE;
 const uint8_t uC::rx_error_status[SYS_STATUS_LEN] = {0x00,0x04,0x027,0x90,0};
+
 uC::uC()
 {
-	Sensor* dwm_1000 = new Sensor();	// create object on the heap because we will use it for a long time so we don't waste the stack
+	Sensor* dwm_1000 = new Sensor();	// create object on heap
 	Receiver* receiver = new Receiver();
 	Transmitter* transmitter = new Transmitter();
 }
 
-uC::uC(STATE initial_state)	// PROBABLY MAKE A CONSTRUCTOR with additionnal parameter being the first message (or we can reuse the message that is previously received. Je m'égare.)
+uC::uC(STATE initial_state)	
 {
-	dwm_1000 = new Sensor();	// create object on the heap because we will use it for a long time so we don't waste the stack
+	dwm_1000 = new Sensor();	
 	receiver = new Receiver();
 	transmitter = new Transmitter();
 	state = initial_state;
@@ -55,8 +55,7 @@ uC::uC(STATE initial_state)	// PROBABLY MAKE A CONSTRUCTOR with additionnal para
  * ##############################   RANGING    #################################
  * #############################################################################
 */
-// should have a reception & emission function called everytime, simply that the state will be different between the different calls in the state machine
-// newer value is actually smaller than the previous value. Reinitialise the system counter I think? (SYS_TIME)
+
 void uC::ranging_loop()
 {
 	if (millis() - ranging_init_time < TIMEOUT)
@@ -113,20 +112,23 @@ void uC::ranging_loop()
 					break;
 				}
 				t_ranging_end = micros();
-				Serial.print("times:(ranging,distance,position): ");
-				Serial.print((int)(t_ranging_end - t_ranging_start));
-				Serial.print(" ");
-				Serial.print((int)(t_distance_end - t_distance_start));
-				Serial.print(" ");
-				Serial.print((int)(t_position_end - t_position_start));
-				Serial.println(";");
+				// TODO: ifdef with the goal of the code (measuring computing
+				// time, distance or localization)
+
+				// Serial.print("times:(ranging,distance,position): ");
+				// Serial.print((int)(t_ranging_end - t_ranging_start));
+				// Serial.print(" ");
+				// Serial.print((int)(t_distance_end - t_distance_start));
+				// Serial.print(" ");
+				// Serial.print((int)(t_position_end - t_position_start));
+				// Serial.println(";");
 				final_system_time = millis();	
 				rx_done = false;
 				receiver -> rx_receive_data(received_message_buffer);
 				if(good_response())
 				{
-					// we already read RX_BUFFER. Should reuse this data in
-					// received_message_buffer !
+					//TO DO: RX_BUFFER was already read in good_response(), 
+					// reuse the data instead of reading again
 					Sensor::read_spi(RX_BUFFER,0x01,anchor_rx_init_time_stamp,TIME_STAMP_LEN);
 					Sensor::read_spi(RX_BUFFER,0x06,anchor_tx_message1_time_stamp,TIME_STAMP_LEN);
 					Sensor::read_spi(RX_BUFFER,0x0B,anchor_rx_message2_time_stamp,TIME_STAMP_LEN);
@@ -155,7 +157,7 @@ void uC::ranging_loop()
 				break;
 			case COMPUTING_STATE:
 				//Serial.println("computing state................");
-				delay(80);
+				delay(80);	// necessary delay between 2 rangings. Still don't know why
 				state = TAG_SEND_INIT;
 				set_message();
 				ranging_init_time = millis();
@@ -229,11 +231,9 @@ void uC::ranging_loop()
 				}
 				t_ranging_end = micros();
 
-				Serial.print("anchor ranging time: ");
-				Serial.println((int)(t_ranging_end - t_ranging_start));
-				// Sensor::read_spi(RX_TIME,NO_SUB,no this is useless time,TIME_STAMP_LEN);
+				// Serial.print("anchor ranging time: ");
+				// Serial.println((int)(t_ranging_end - t_ranging_start));
 				Serial.println("Anchor side -- done");
-				// Sensor::print_register(no this is useless time,TIME_STAMP_LEN);
 				tx_done = false;
 				ranging_init_time = millis();	// restart ranging duration timeout
 				state = ANCHOR_WAIT_INIT;
@@ -377,7 +377,7 @@ void uC::compute_distance()
 	TOF_val = (t_round_tag - t_reply_anchor) + (t_round_anchor - t_reply_tag);
 	TOF = ((double)(TOF_val))/4;
 
-	// // method 2
+	// // method 2 (asymetric)
 	// TOF = (t_round_tag*t_round_anchor - t_reply_tag*t_reply_anchor)/((double)t_round_tag + t_round_anchor + t_reply_tag + t_reply_anchor);
 
 	TOF = TOF*REGISTER_VALUE_TO_S;	//in seconds
@@ -408,6 +408,7 @@ void uC::compute_position()
 	// Based on An Efficient Least-Squares Trilateration Algorithm for Mobile Robot Localization
 	// Yu Zhou, Member, IEEE
 
+	// for testing algorithm, add random noise on artificial measures
     // srand(time(NULL));
     // double random_n;
     // distances[0] = 0;
@@ -428,7 +429,6 @@ void uC::compute_position()
     // 		Serial.println(anchor_positions[i][j]);
     // 	}
     // }
-
     // Serial.print("distances recorded:");
     // for (int i = 1; i <= 3; i ++)
     // {
@@ -550,6 +550,7 @@ void uC::compute_position()
 	// {
 	// 	yield();
 	// }
+
 	t_position_end = micros();
 	// Serial.print("duration of position computation:");
 	// Serial.println((int)(t_position_end - t_position_start));
@@ -636,12 +637,14 @@ void uC::clear_rx_interrupts()
 
 void uC::set_message()
 {
+	// MESSAGE_SIZE: length of the message needed to be sent (state of the 
+	// ranging and anchor number)
 	switch(state)
 	{
 		case TAG_SEND_INIT:
 			msg[0] = MESSAGE_INIT;
 			msg[0] += (current_ranging_anchor_number << 4);
-			msg_length = MESSAGE_SIZE;	// rename MESSAGE_SIZE
+			msg_length = MESSAGE_SIZE;
 			break;	
 		case TAG_SEND_MESSAGE_2:
 			msg[0] = MESSAGE_2;
@@ -681,6 +684,8 @@ void uC::set_message()
 
 void uC::get_impulse_response()
 {
+	// reseting the watchdog timer is only necessary if we want to print the
+	// whole register, but since it's only zeros, not usefull
 	wdt_disable();			// disable watchdog timer
 	Serial.println("--------------IMPULSE RESPONSE---------------------");
 	uint8_t impulse_response[4064];
@@ -730,12 +735,10 @@ void uC::config_pins()
 
 void uC::config_uc_to_sensor_communication()
 {
-	// chek in spi communication bis. There, we do not need to use this sys_cfg, just
-	// put speed at 20 MHz. Might it solve the problem of the unreadable status register??
-	// Who knows
-	// attach_interrupt();
 	dwm_1000 -> dwm_init();	// this has to be the first function! (softreset)
-	// dwm_1000 -> spi_init(); //correct spi config BEFORE attaching interrupt to avoid unwanted interrupt here
+	// legacy: spi_init(). Was used before fixing the read and write SPI
+	// functions (protect from interrupts).
+	// dwm_1000 -> spi_init();
 	// dwm_1000 -> idle();
 	// Sensor::read_spi(SYS_MASK,NO_SUB,p_sys_mask,SYS_MASK_LEN);
 	// Sensor::clear_register(SYS_MASK,SYS_MASK_LEN);
@@ -747,7 +750,6 @@ void uC::config_uc_to_sensor_communication()
 
 void uC::config_sensor_to_sensor_communication()
 {
-	//TO DO: rename transmitter to set parameters
 	transmitter -> transmitter_init(); // Transmitter Configuration Procedure: page 202
 	receiver -> receiver_init();
 	dwm_1000 -> correct_default_configuration();
@@ -765,7 +767,7 @@ void uC::config_sensor()
 	Serial.println("done");
 	if (state == TAG_SEND_INIT)
 	{
-		current_ranging_anchor_number = 1;	// first tag starts at 1...
+		current_ranging_anchor_number = 1;	// first anchor starts at 1...
 		Serial.println("0->>>>TAG_SEND_INIT");
 		ranging_init_time = millis();
 	}
@@ -802,6 +804,7 @@ void uC::rx_reset()
 
 void uC::system_state()
 {
+	// for debugging purposes, cf aps022
 	Serial.println("system state function..........");
 	uint8_t sys_state[SYS_STATE_LEN] = {0};
 	uint8_t sys_status[SYS_STATUS_LEN] = {0};
@@ -892,7 +895,8 @@ void uC::dwm_isr()	// static method, can only access static members
 	{
 		Serial.println("RX ERROR!");
 		system_state();
-		// rx_reset();	//can't call it here (or make it static)
+		// rx_reset();	//can't call it here (or make it static). RX error
+						// almost never occurs
 	}
 	else
 	{

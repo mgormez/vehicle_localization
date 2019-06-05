@@ -285,6 +285,7 @@ void Receiver::receiver_update_preamble_code()
 
 void Receiver::receiver_update_preamble_size()
 {
+	// old: to be changed
 	// uint8_t drx_tune1b[2] = {0};
 	// switch (this -> preamble_size) 
 	// {
@@ -349,6 +350,7 @@ void Receiver::show_yourself()
 
 void Receiver::polling_read_data()
 {
+	// for testing purposes (not used)
 	// Get frame length
 	uint8_t flen;	// can we have more than 256 bytes of data?
 	read_spi(RX_FINFO, NO_SUB, &flen, 1);

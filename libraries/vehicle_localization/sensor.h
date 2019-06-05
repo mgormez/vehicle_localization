@@ -74,10 +74,9 @@ public:
 	*/
 	void set_ranging_parameters();
 	/*
-	 * 
+	 * perform soft reset and load LDE microcode
 	*/
 	void dwm_init();
-
 	/*
 	 * put sensor into IDLE mode
 	*/
@@ -90,15 +89,9 @@ public:
 	/*
 	 * for load LDE
 	*/
-
 	void load_LDE();
 	
 	void set_channel(CHANNEL_NB c);
-	/*
-	 * The transmitter antenna delay may be set to zero and a combined receiver 
-	 * and transmitter delay value may be used for the receiver antenna
-	*/
-	void set_anchor_antenna_delay();
 
 	/*
 	 * 2.5.5 Default Configurations that should be modified
@@ -144,12 +137,6 @@ public:
 	*/
 	static void print_register(uint8_t* register_buffer, uint16_t register_len);
 	static void set_bit(uint8_t* data, uint16_t len, uint8_t bit, uint8_t val);
-
-
-
-
-
-
 };
 
 #endif

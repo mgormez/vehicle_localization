@@ -1,7 +1,7 @@
 
 
 
-// todo : put slow spi
+
 #include <Arduino.h>
 #include <cstring>
 #include "transmitter.h"
@@ -15,10 +15,6 @@ Transmitter::Transmitter()
 void Transmitter::transmitter_init()
 {
 	idle();
-	// set default values for channel parameters
-	// set_default_ranging_parameters();
-	// transmitter_update_values();
-	// delay(10);
 
 	// set desired values for channel parameters
 	set_ranging_parameters();
@@ -44,14 +40,12 @@ void Transmitter::tx_start()
 	// p79/244. Call once all the configuration has been done and the data putt in TX_BUFFER.
 	// This is the last step before the message is sent
 	// device should be in IDLE mode before this
-	uint8_t tx_start[1] = {0};	//FIXME change name 
+	uint8_t tx_start[1] = {0};
 	
 	set_bit(tx_start,1,TXSTRT_BIT,1);		// start transmission bit
 	set_bit(tx_start,1,WAIT4RESP_BIT,1);	// wait for response bit
 	// Serial.print("tx_start:: ");
 	// Serial.println(tx_start[0],BIN);
-	// we can check WAIT4RESP here !! 
-	//If the transmitter is expecting a response, because dwm1000 can go automatically from this transmit to receive mode then.
 	write_spi(SYS_CTRL,NO_SUB,tx_start,1);
 }
 

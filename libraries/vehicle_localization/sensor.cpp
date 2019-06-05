@@ -19,25 +19,10 @@ Sensor::Sensor()
 void Sensor::dwm_init()
 {
 	// Serial.println("dwm_init::");
-	soft_reset();	//check for changing the clock speed during the softreset, cf dw API  XXXXXXXXXXXXXXXX
+	soft_reset();	
 	delay(5);
-	//change clock to XTI clock
-	// uint8_t pmsc_ctrl0[2] = {0};// spi_buffer buffer to put in PMSC_CTRL0_SUB register
-	// slow_read_spi(PMSC, PMSC_SYSCLKS_SUB, pmsc_ctrl0, 2);
-	// pmsc_ctrl0[0] &= 0xFC;
-	// pmsc_ctrl0[0] |= 0x01;
-	// slow_write_spi(PMSC, PMSC_SYSCLKS_SUB, pmsc_ctrl0, 2);
-	
-	// delay(10);
 	load_LDE();
 	delay(5);
-
-	//change clock back to AUTO clock
-	// slow_read_spi(PMSC, PMSC_SYSCLKS_SUB, pmsc_ctrl0, 2);
-	// pmsc_ctrl0[0] = 0x00;
-	// pmsc_ctrl0[1] &= 0xFE;
-	// slow_write_spi(PMSC, PMSC_SYSCLKS_SUB, pmsc_ctrl0, 2);
-
 }
 void Sensor::wait_4_response()
 {
@@ -179,19 +164,6 @@ void Sensor::load_LDE()
 	delay(1);
 }
 
-void Sensor::set_anchor_antenna_delay()
-{
-	// uint8_t receiver_delay[2];
-    // uint16_t antenna_delay = ANTENNA_DELAY >> 1;
-    // receiver_delay[1] = (antenna_delay & 0xFF00) >>8;
-    // receiver_delay[0] = (antenna_delay & 0xFF);
-    // write_spi(TX_ANTD, NO_SUB, receiver_delay, 2);
-    // write_spi(LDE_CTRL, 0x1804, receiver_delay, 2);
-    // uint8_t antenna_delay[2] = {0x08,0x00};
-    // write_spi(TX_ANTD, NO_SUB, antenna_delay, 2);
-    // write_spi(LDE_CTRL, 0x1804, receiver_delay, 2);
-}
-
 void Sensor::spi_init()
 {
 	// legacy function
@@ -245,9 +217,7 @@ void Sensor::correct_default_configuration()
     //Sensor::load_LDE()
 
 	//LDO_TUNE
-    Serial.println("To Do: LDO_TUNE?");
-    // Serial.println("Also: maybe throw away the first frame as there is always a locking problem? Make a dummy frame with value 0xFF that tags know to discard");
-    // Serial.println("To Do: also other config things :( ");
+	//TODO
 }
 
 void Sensor::dwm_update_channel()

@@ -20,6 +20,9 @@ public:
 	 * set default values of the channel. Need to be corrected taking into account 2.5.5 page 22/244
 	*/
 	void transmitter_init();
+	/*
+	 * set the correct values in the registers corresponding to the mode selected
+	*/
 	void transmitter_update_values();
 
 	/*
@@ -27,20 +30,15 @@ public:
 	*/
 	// void clear_tx_interrupts(); // static to be able to call during static interrupt
 	void tx_start();
-	void tx_buffer_fill_data(uint8_t* data, uint8_t data_size);
-
-	// DO NOT do this! Function is declared in the super class this is 
-	// unintended polymorphism, function not redefined in subclass -> problem!
-	// uint8_t channel_valid_preamble_code(uint8_t preamble_code);
-	// PE channel_valid_preamble_size( PE preamble_size);
-
 	/*
-	 * send default values sent to the dw
+	 * write data to tx buffer
+	*/
+	void tx_buffer_fill_data(uint8_t* data, uint8_t data_size);
+	/*
+	 * set all the correct values in the registers corresponding to the mode selected
+	 * cf datasheet 
 	*/
 	void transmitter_update_tx_power();
-	/*
-	 * 7.2.41.5 p152/244
- 	*/
 	void transmitter_update_channel();
 	void transmitter_update_bitrate();
 	void transmitter_update_prf();
