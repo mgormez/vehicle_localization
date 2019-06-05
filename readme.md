@@ -6,7 +6,7 @@
 
 Master thesis submitted in order to be awarded the Master's Degree in Electrical Engineering
 
-### Repository contents
+<!-- ### Repository contents
 
 - michael_gormez_master_thesis_vehicle_localization.pdf
 	> Report written
@@ -14,3 +14,4 @@ Master thesis submitted in order to be awarded the Master's Degree in Electrical
 	> Arduino sketches. Each sketch should be run on a different microcontroller
 - libraries
 	> C++ libraries
+ -->
