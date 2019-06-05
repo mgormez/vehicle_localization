@@ -1,7 +1,7 @@
 
 
 /*
- * Version 05-3 : implement a ranging between tag and anchor
+ * Version 05-5 : implement a ranging between tag and anchor
  * This version will compute the correct times
 */
 
@@ -42,13 +42,12 @@ void setup()
 
 	esp -> config_sensor();
 	esp -> get_device_ID();//confirms good SPI communcation between microcontroller and sensor
-	delay(10);
-	delay(1000);
+	delay(100);	// necessary
 	esp -> set_message();
 	esp -> start_transmission();
 }
 
 void loop()
 {
-	esp -> use_sensor();
+	esp -> ranging_loop();
 }

@@ -1,7 +1,7 @@
 
 
 /*
- * Version 05-3 : implement a ranging between tag and anchor
+ * Version 05-5 : implement a ranging between tag and anchor
  * This version will compute the correct times
 */
 
@@ -35,14 +35,15 @@ void setup()
 	Serial.println("---------------------------------------------------------");
 	Serial.println("");
 	delay(10);	//time for dw to go from wake up to init to idle
-	Serial.println("before setting anchor number");
-	esp -> set_number(0x2);
-	Serial.println("before setting anchor number");
+	esp -> set_number(0x3);
 	esp -> config_pins();
 	//TO DO: check the state of the uC object to turn on or off the LED to translate the RX or TX mode
-	Serial.println("===> starting the RECEIVER");
+	Serial.print("===> starting the ANCHOR");
+	Serial.println(esp -> get_anchor_number());
 	digitalWrite(LED,HIGH);	//turn LED OFF (=high) for RECEIVER
+
 	esp -> config_sensor();
+	esp -> correct_anchor_delay();
 	esp -> get_device_ID();	//confirms good SPI communcation between microcontroller and sensor
 	delay(10);
 	esp -> start_reception();
@@ -50,5 +51,5 @@ void setup()
 
 void loop()
 {
-	esp -> use_sensor();
+	esp -> ranging_loop();
 }
